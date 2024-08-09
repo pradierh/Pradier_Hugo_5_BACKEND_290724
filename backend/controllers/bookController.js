@@ -110,26 +110,58 @@ exports.modifyBook = (req, res) => {
 		});
 };
 
-exports.bestRating = (req, res) => {
-	Book.getTopBooks()
-		.then((books) => {
-			if (!Array.isArray(books)) {
-				throw new TypeError("Expected books to be an array");
-			}
-			res.status(200).json({
-				message: "Top 3 books fetched successfully",
-				books: books,
-			});
-		})
-		.catch((err) => {
-			console.error("Error fetching top-rated books:", err);
-			res.status(500).json({
-				message: "Fetching top books failed!",
-				error: err,
-			});
+exports.bestRating = async (req, res) => {
+	try {
+		const books = await Book.getTopBooks();
+
+		if (!Array.isArray(books)) {
+			throw new TypeError("Expected books to be an array");
+		}
+
+		return res.status(200).json({
+			message: "Top 3 books fetched successfully",
+			books: [books[0], books[1], books[2]],
 		});
+	} catch (err) {
+		console.error("Error fetching top-rated books:", err);
+		res.status(500).json({
+			message: "Fetching top books failed!",
+			error: err,
+		});
+	}
 };
 
-exports.rateBook = (req, res) => {
-	Book.findOne({ _id: req.params.id });
+exports.rateBook = async (req, res) => {
+	try {
+		const bookId = req.params.id;
+		const { userId, rating } = req.body;
+
+		if (!userId || rating == null) {
+			return res
+				.status(400)
+				.json({ message: "userId et rating sont requis" });
+		}
+
+		const updatedBook = await Book.findByIdAndUpdate(
+			bookId,
+			{ $push: { ratings: { userId, grade: rating } } },
+			{ new: true, useFindAndModify: false }
+		);
+
+		if (!updatedBook) {
+			return res.status(404).json({ message: "Livre non trouvé" });
+		}
+
+		const ratings = updatedBook.ratings;
+		const totalRatings = ratings.reduce((sum, r) => sum + r.grade, 0);
+		const averageRating = (totalRatings / ratings.length).toFixed(1);
+
+		updatedBook.averageRating = averageRating;
+		await updatedBook.save();
+
+		res.status(200).json(updatedBook);
+	} catch (error) {
+		console.error("Erreur lors de l'ajout de l'évaluation:", error);
+		res.status(500).json({ message: "Erreur interne du serveur" });
+	}
 };
