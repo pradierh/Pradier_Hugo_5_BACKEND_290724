@@ -10,7 +10,6 @@ exports.getAllBooks = (req, res) => {
 exports.createBook = (req, res, next) => {
 	try {
 		const bookData = JSON.parse(req.body.book);
-		delete bookData._id;
 		delete bookData._userId;
 		const book = new Book({
 			...bookData,
@@ -27,6 +26,7 @@ exports.createBook = (req, res, next) => {
 				});
 			})
 			.catch((err) => {
+				console.log(err);
 				res.status(500).json({
 					message: "Creating the book failed!",
 					error: err,
@@ -117,11 +117,7 @@ exports.bestRating = async (req, res) => {
 		if (!Array.isArray(books)) {
 			throw new TypeError("Expected books to be an array");
 		}
-
-		return res.status(200).json({
-			message: "Top 3 books fetched successfully",
-			books: [books[0], books[1], books[2]],
-		});
+		return res.status(200).send(books);
 	} catch (err) {
 		console.error("Error fetching top-rated books:", err);
 		res.status(500).json({

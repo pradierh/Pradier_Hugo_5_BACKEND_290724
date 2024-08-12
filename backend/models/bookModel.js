@@ -2,12 +2,12 @@ const mongoose = require("mongoose");
 const uniqueValidator = require("mongoose-unique-validator");
 
 const ratingSchema = new mongoose.Schema({
-	userId: { type: String, required: true, unique: true },
+	userId: { type: String, required: true, unique: false },
 	grade: { type: Number, required: true },
 });
 
 const bookSchema = new mongoose.Schema({
-	userId: { type: String, required: true },
+	userId: { type: String, required: true, unique: false },
 	title: { type: String, required: true },
 	author: { type: String, required: true },
 	imageUrl: { type: String, required: true },
@@ -16,8 +16,6 @@ const bookSchema = new mongoose.Schema({
 	ratings: [ratingSchema],
 	averageRating: { type: Number, required: true },
 });
-
-ratingSchema.plugin(uniqueValidator);
 
 bookSchema.statics.getTopBooks = async function () {
 	try {

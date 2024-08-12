@@ -2,6 +2,7 @@ import axios from 'axios';
 import { API_ROUTES } from '../utils/constants';
 
 function formatBooks(bookArray) {
+  console.log(bookArray);
   return bookArray.map((book) => {
     const newBook = { ...book };
     // eslint-disable-next-line no-underscore-dangle
