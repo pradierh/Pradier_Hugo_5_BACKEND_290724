@@ -1,4 +1,6 @@
 const Book = require("../models/bookModel");
+const User = require("../models/userModel");
+const mongoose = require("mongoose");
 const fs = require("fs");
 
 exports.getAllBooks = (req, res) => {
@@ -137,25 +139,34 @@ exports.rateBook = async (req, res) => {
 				.status(400)
 				.json({ message: "userId et rating sont requis" });
 		}
-
-		const updatedBook = await Book.findByIdAndUpdate(
-			bookId,
-			{ $push: { ratings: { userId, grade: rating } } },
-			{ new: true, useFindAndModify: false }
-		);
-
-		if (!updatedBook) {
-			return res.status(404).json({ message: "Livre non trouvé" });
+		if (!mongoose.isValidObjectId(userId)) {
+			return res.status(400).json({ message: "ID utilisateur invalide" });
+		}
+		const user = await User.findById(userId);
+		if (!user) {
+			return res.status(404).json({ message: "Utilisateur non trouvé" });
 		}
 
-		const ratings = updatedBook.ratings;
-		const totalRatings = ratings.reduce((sum, r) => sum + r.grade, 0);
-		const averageRating = (totalRatings / ratings.length).toFixed(1);
+		const book = await Book.findById(bookId);
+		if (!book) {
+			return res.status(404).json({ message: "Livre non trouvé" });
+		}
+		const existingRating = book.ratings.find((r) => r.userId === userId);
+		if (existingRating) {
+			return res
+				.status(400)
+				.json({ message: "L'utilisateur a déjà voté pour ce livre" });
+		}
+		book.ratings.push({ userId, grade: rating });
 
-		updatedBook.averageRating = averageRating;
-		await updatedBook.save();
+		const totalRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
+		const averageRating = (totalRatings / book.ratings.length).toFixed(1);
 
-		res.status(200).json(updatedBook);
+		book.averageRating = averageRating;
+
+		await book.save();
+
+		res.status(200).json(book);
 	} catch (error) {
 		console.error("Erreur lors de l'ajout de l'évaluation:", error);
 		res.status(500).json({ message: "Erreur interne du serveur" });

@@ -6,7 +6,6 @@ const multer = require("../middleware/multer-config");
 const authMiddleware = require("../middleware/authenticateToken.js");
 
 router.get("/bestrating", bookCtrl.bestRating);
-
 router.post("/", authMiddleware, multer, bookCtrl.createBook);
 router.get("/", bookCtrl.getAllBooks);
 router.get("/:id", bookCtrl.getOneBook);
