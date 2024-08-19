@@ -14,7 +14,7 @@ function authMiddleware(req, res, next) {
 	}
 
 	try {
-		const decodedToken = jwt.verify(token, "secretKey);
+		const decodedToken = jwt.verify(token, "secretKey");
 		req.userId = decodedToken.user_id;
 		next();
 	} catch (error) {
