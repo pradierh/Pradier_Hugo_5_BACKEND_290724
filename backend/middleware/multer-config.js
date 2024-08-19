@@ -15,8 +15,7 @@ const storage = multer.diskStorage({
 	},
 	filename: (req, file, callback) => {
 		const name = file.originalname.split(" ").join("_");
-		const extension = MIME_TYPES[file.mimetype];
-		callback(null, name + Date.now() + "." + extension);
+		callback(null, name + Date.now());
 	},
 });
 
@@ -30,23 +29,32 @@ module.exports = (req, res, next) => {
 
 		const filePath = req.file.path;
 		const fileName = req.file.filename;
-
-		const outputFilePath = path.join("images", "compressed_" + fileName);
+		const baseName = path.parse(fileName).name;
+		const outputFileName = `compressed_${baseName}.webp`;
+		const outputFilePath = path.join("images", outputFileName);
 
 		sharp(filePath)
 			.resize({ width: 800 })
-			.toFormat("webp")
+			.webp({ quality: 75 })
 			.toFile(outputFilePath, (err, info) => {
 				if (err) {
+					console.error('Error processing file:', err);
+					fs.unlink(filePath, (unlinkError) => {
+						if (unlinkError) {
+							console.error('Failed to delete the original file:', unlinkError);
+						}
+					});
 					return res.status(500).json({ error: err.message });
 				}
-				fs.unlink(filePath, (err) => {
-					if (err) {
-						console.error(err);
+
+				fs.unlink(filePath, (unlinkError) => {
+					if (unlinkError) {
+						console.error('Failed to delete the original file:', unlinkError);
 					}
 				});
+
 				req.file.path = outputFilePath;
-				req.file.filename = "compressed_" + fileName;
+				req.file.filename = outputFileName;
 
 				next();
 			});
