@@ -1,25 +1,25 @@
-const multer = require("multer");
-const sharp = require("sharp");
-const fs = require("fs");
-const path = require("path");
+const multer = require('multer');
+const sharp = require('sharp');
+const fs = require('fs');
+const path = require('path');
 
 const MIME_TYPES = {
-	"image/jpg": "jpg",
-	"image/jpeg": "jpg",
-	"image/png": "png",
+	'image/jpg': 'jpg',
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
 };
 
 const storage = multer.diskStorage({
 	destination: (req, file, callback) => {
-		callback(null, "images");
+		callback(null, 'images');
 	},
 	filename: (req, file, callback) => {
-		const name = file.originalname.split(" ").join("_");
-		callback(null, name + Date.now());
+		const name = file.originalname.split(' ').join('_');
+		callback(null, name);
 	},
 });
 
-const upload = multer({ storage: storage }).single("image");
+const upload = multer({ storage: storage }).single('image');
 
 module.exports = (req, res, next) => {
 	upload(req, res, function (err) {
@@ -31,7 +31,7 @@ module.exports = (req, res, next) => {
 		const fileName = req.file.filename;
 		const baseName = path.parse(fileName).name;
 		const outputFileName = `compressed_${baseName}.webp`;
-		const outputFilePath = path.join("images", outputFileName);
+		const outputFilePath = path.join('images', outputFileName);
 
 		sharp(filePath)
 			.resize({ width: 800 })

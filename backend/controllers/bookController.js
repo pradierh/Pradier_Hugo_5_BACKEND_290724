@@ -1,7 +1,8 @@
-const Book = require("../models/bookModel");
-const User = require("../models/userModel");
-const mongoose = require("mongoose");
-const fs = require("fs");
+const Book = require('../models/bookModel');
+const User = require('../models/userModel');
+const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 
 exports.getAllBooks = (req, res) => {
 	Book.find()
@@ -16,27 +17,28 @@ exports.createBook = (req, res, next) => {
 		const book = new Book({
 			...bookData,
 			userId: req.userId,
-			imageUrl: `${req.protocol}://${req.get("host")}/images/${
+			imageUrl: `${req.protocol}://${req.get('host')}/images/${
 				req.file.filename
 			}`,
 		});
-		book.save()
+		book
+			.save()
 			.then((result) => {
 				res.status(201).json({
-					message: "Book created successfully!",
+					message: 'Book created successfully!',
 					book: result,
 				});
 			})
 			.catch((err) => {
 				console.log(err);
 				res.status(500).json({
-					message: "Creating the book failed!",
+					message: 'Creating the book failed!',
 					error: err,
 				});
 			});
 	} catch (error) {
 		res.status(400).json({
-			message: "Invalid data format",
+			message: 'Invalid data format',
 			error: error.message,
 		});
 	}
@@ -47,14 +49,12 @@ exports.getOneBook = (req, res) => {
 	Book.findById(bookId)
 		.then((book) => {
 			if (!book) {
-				return res.status(404).json({ message: "Book not found!" });
+				return res.status(404).json({ message: 'Book not found!' });
 			}
 			res.status(200).json(book);
 		})
 		.catch((err) =>
-			res
-				.status(500)
-				.json({ message: "Fetching the book failed!", error: err })
+			res.status(500).json({ message: 'Fetching the book failed!', error: err })
 		);
 };
 
@@ -62,52 +62,77 @@ exports.deleteBook = (req, res, next) => {
 	Book.findOne({ _id: req.params.id })
 		.then((book) => {
 			if (book.userId != req.userId) {
-				res.status(401).json({ message: "Not authorized" });
+				return res.status(401).json({ message: 'Not authorized' });
 			} else {
-				const filename = book.imageUrl.split("/images/")[1];
-				fs.unlink(`images/${filename}`, () => {
+				const filename = book.imageUrl.split('/images/')[1];
+				const imagePath = path.join(__dirname, '..', 'images', filename);
+
+				fs.unlink(imagePath, (err) => {
+					if (err) {
+						console.error(
+							`Erreur lors de la suppression du fichier : ${err.message}`
+						);
+						return res.status(500).json({ error: err.message });
+					}
+
 					Book.deleteOne({ _id: req.params.id })
 						.then(() => {
-							res.status(200).json({
-								message: "Objet supprimé !",
-							});
+							res.status(200).json({ message: 'Objet supprimé !' });
 						})
 						.catch((error) => res.status(401).json({ error }));
 				});
 			}
 		})
 		.catch((error) => {
+			console.log(error);
 			res.status(500).json({ error });
 		});
 };
 
 exports.modifyBook = (req, res) => {
-	const bookObject = req.file
-		? {
-				...JSON.parse(req.body.book),
-				imageUrl: `${req.protocol}://${req.get("host")}/images/${
-					req.file.filename
-				}`,
-		  }
-		: { ...req.body };
+	let bookObject = req.file;
+
+	if (req.file) {
+		bookObject = {
+			...JSON.parse(req.body.book),
+			imageUrl: `${req.protocol}://${req.get('host')}/images/${
+				req.file.filename
+			}`,
+		};
+		console.log(bookObject.imageUrl);
+	} else {
+		bookObject = {
+			...req.body,
+		};
+	}
 
 	delete bookObject._userId;
 	Book.findOne({ _id: req.params.id })
 		.then((book) => {
 			if (book.userId != req.userId) {
-				res.status(401).json({ message: "Not authorized" });
+				res.status(401).json({ message: 'Not authorized' });
 			} else {
+				const filename = book.imageUrl.split('/images/')[1];
+				const imagePath = path.join(__dirname, '..', 'images', filename);
+
+				fs.unlink(imagePath, (err) => {
+					if (err) {
+						console.error(
+							`Erreur lors de la suppression du fichier : ${err.message}`
+						);
+						return res.status(500).json({ error: err.message });
+					}
+				});
 				Book.updateOne(
 					{ _id: req.params.id },
 					{ ...bookObject, _id: req.params.id }
 				)
-					.then(() =>
-						res.status(200).json({ message: "Objet modifié!" })
-					)
+					.then(() => res.status(200).json({ message: 'Objet modifié!' }))
 					.catch((error) => res.status(401).json({ error }));
 			}
 		})
 		.catch((error) => {
+			console.log(error);
 			res.status(400).json({ error });
 		});
 };
@@ -117,13 +142,13 @@ exports.bestRating = async (req, res) => {
 		const books = await Book.getTopBooks();
 
 		if (!Array.isArray(books)) {
-			throw new TypeError("Expected books to be an array");
+			throw new TypeError('Expected books to be an array');
 		}
 		return res.status(200).send(books);
 	} catch (err) {
-		console.error("Error fetching top-rated books:", err);
+		console.error('Error fetching top-rated books:', err);
 		res.status(500).json({
-			message: "Fetching top books failed!",
+			message: 'Fetching top books failed!',
 			error: err,
 		});
 	}
@@ -135,21 +160,19 @@ exports.rateBook = async (req, res) => {
 		const { userId, rating } = req.body;
 
 		if (!userId || rating == null) {
-			return res
-				.status(400)
-				.json({ message: "userId et rating sont requis" });
+			return res.status(400).json({ message: 'userId et rating sont requis' });
 		}
 		if (!mongoose.isValidObjectId(userId)) {
-			return res.status(400).json({ message: "ID utilisateur invalide" });
+			return res.status(400).json({ message: 'ID utilisateur invalide' });
 		}
 		const user = await User.findById(userId);
 		if (!user) {
-			return res.status(404).json({ message: "Utilisateur non trouvé" });
+			return res.status(404).json({ message: 'Utilisateur non trouvé' });
 		}
 
 		const book = await Book.findById(bookId);
 		if (!book) {
-			return res.status(404).json({ message: "Livre non trouvé" });
+			return res.status(404).json({ message: 'Livre non trouvé' });
 		}
 		const existingRating = book.ratings.find((r) => r.userId === userId);
 		if (existingRating) {
@@ -169,6 +192,6 @@ exports.rateBook = async (req, res) => {
 		res.status(200).json(book);
 	} catch (error) {
 		console.error("Erreur lors de l'ajout de l'évaluation:", error);
-		res.status(500).json({ message: "Erreur interne du serveur" });
+		res.status(500).json({ message: 'Erreur interne du serveur' });
 	}
 };
